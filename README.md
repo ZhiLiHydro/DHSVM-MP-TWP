@@ -1,87 +1,207 @@
-<h1>Distributed Hydrology Soil Vegetation Model (DHSVM) </h1>
+# DHSVM-MP-TWP
 
-This repository serves as the public source code repository of the Distributed Hydrology Soil Vegetation Model (DHSVM). You can find DHSVM documentation, and selected past and ongoing DHSVM-based research & projects on the <a href="https://dhsvm.pnnl.gov/">DHSVM website </a>.
+This repository is a research fork of the Distributed Hydrology Soil
+Vegetation Model (DHSVM) with a microplastics module focused on
+tire wear particles (TWP). The hydrologic model remains DHSVM; setting
+`PLASTICS = FALSE` disables the added particle calculations.
 
-DHSVM (<a href="http://onlinelibrary.wiley.com/doi/10.1029/94WR00436/abstract">Wigmosta et al., 1994</a>) numerically represents with high spatial resolution (typically on the order of 100 m) the effects of local weather, topography, soil type, and vegetation on the hydrology within watersheds. The model is used to study the impacts of climate change, land use change, forest management practices, flooding, glacier dynamics, stream temperature and stream quality.
+DHSVM represents the effects of weather, topography, soils, and vegetation on
+watershed hydrology at high spatial resolution. The upstream model and general
+documentation are available from the [DHSVM website](https://dhsvm.pnnl.gov/).
+The foundational model is described by Wigmosta et al. (1994),
+*Water Resources Research*, DOI
+[10.1029/94WR00436](https://doi.org/10.1029/94WR00436).
 
-<strong>DHSVM is a research model that does not come with any warrantee or guarantee</strong>. Please be advised that no technical support is available other than the model web page. Because the model is under continous development, there is no guarantee that the newly developed modules or options are exhaustively tested or work properly. 
 
-If you decide to use DHSVM, please acknowledge <a href="http://onlinelibrary.wiley.com/doi/10.1029/94WR00436/abstract">Wigmosta et al. [1994]</a> and any other relevant publications. We are very interested in receiving a copy of any manuscripts of studies in which the model is used. Finally, if you do find bugs in the model or if you have improvements to the model code, we are interested in incorporating your suggestions and/or contributions. 
+## TWP additions
+
+The TWP module adds:
+
+- an optional airborne-microplastic deposition pathway;
+- a gridded, cell-aggregated annual average daily traffic (AADT) source map;
+- antecedent dry-period accumulation and runoff-dependent wash-off;
+- division of source mass between impervious and pervious surface stores;
+- conservative transfer of mobilized particle mass to the stream network;
+- advective channel routing with optional link-to-link diffusion;
+- water-column settling, bed deposition, and bed resuspension;
+- time-varying TWP source scaling; and
+- TWP concentration, load, spatial-state, and mass-balance outputs.
 
 
-## DHSVM v 3.2 ##
-### _Release date: February 23, 2018_ ###
+## Repository scope
 
-This is a major release from DHSVM 3.1.2. It includes several new features, function enhancements and bug fixes.<br />
-The tutorial and sample data to run DHSVM v 3.2 will be made available on the <a href="https://dhsvm.pnnl.gov/tutorials.stm">DHSVM website </a>.
+This repository intentionally contains only the core model source. It excludes the test datasets,
+RBM model, auxiliary conversion programs, legacy GIS scripts, historical
+tutorials, and generated build products. 
 
-__New Capabilities__
-  * Variable radiation transmittance (with solar position and tree characteristics) 
-  * Canopy gap (<a href="https://onlinelibrary.wiley.com/doi/abs/10.1002/hyp.13150">Sun et al., 2018</a>)
-  * Snow sliding 
-  * Python scripts to create stream network
-  * Support of gridded meteorological data input
+## Build
 
-__Enhancement & Fixes__
-  * Negative soil moisture 
-  * Configuration and Build with CMake
-<br />
+Requirements depend on the selected options. A C compiler and CMake are
+required. NetCDF and X11 are enabled by default but may be disabled.
 
-## Configuration and Build with CMake ##
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DDHSVM_USE_NETCDF=OFF \
+  -DDHSVM_USE_X11=OFF
+cmake --build build --parallel
+```
 
-DHSVM and related utilities can be configured and built using
-[CMake](https://cmake.org).  This provides an automated,
-cross-platform way to locate and use system libraries (X11,
-[NetCDF](http://www.unidata.ucar.edu/software/netcdf/), etc.) and
-select optional features.  Here are some terse instructions: 
+The main executable is normally written to:
 
-  * In the top DHSVM (where `CMakeLists.txt` is located), make a
-    directory for the build, called `build` maybe.
-    
-  * In the `build` directory, run [CMake](https://cmake.org) with
-    appropriate options, for example,
-    
-        cmake -D CMAKE_BUILD_TYPE:STRING=Release ..
+```text
+build/DHSVM/sourcecode/DHSVM
+```
 
-    Look at `example_configuration.sh` for configurations used on
-    several developers' systems. Alternatively, just use the script:
+For a NetCDF-enabled build, install the NetCDF C development library and omit
+`-DDHSVM_USE_NETCDF=OFF`. X11 can be enabled in the same way.
 
-        sh ../example_configuration.sh
+## Activating the particle module
 
-    This provides a vanilla configuration without X11,
-    [NetCDF](http://www.unidata.ucar.edu/software/netcdf/), or RBM
-    using the default C compiler.
-    
-  * If successful, build DHSVM and related programs, using
+Set the following in the DHSVM input file:
 
-        cmake --build .
+```ini
+[OPTIONS]
+PLASTICS = TRUE
+```
 
-    The resulting executable programs will be in the build directory
-    in a tree mirroring the source tree.  For example, DHSVM is
-    `build/DHSVM/sourcecode/DHSVM`. 
-    
-The original Makefiles are in the source tree and can still be used as
-described in the tutorial if preferred.
+Add a `[PLASTIC]` section. `TWP MAP FILE` activates the TWP pathway. `ATMS MAP
+FILE` controls the older airborne-microplastics pathway and can be `none`.
 
-### Experimental Surface/Subsurface Mode ###
+```ini
+[PLASTIC]
+ATMS MAP FILE = none
+TWP MAP FILE = /absolute/path/to/aggregated_aadt.bin
+ANTECEDENT DRY DAYS = 7
+ATMS MP LOWER THRESH = 0
+ATMS MP UPPER THRESH = 0.001
+TWP LOWER THRESH = 0.0001
+TWP UPPER THRESH = 0.001
+TWP SCALE FILE = none
+TWP EMISSION FACTOR MG/VKM = 51.1
+TWP SOURCE COEFFICIENT = 1
+TWP PARTICLE DIAMETER M = 0.000075
+TWP SUBMERGED SPECIFIC DENSITY = 0.3
+TWP KINEMATIC VISCOSITY M2/S = 0.000001
+TWP VON KARMAN CONSTANT = 0.41
+TWP REFERENCE HEIGHT RATIO = 0.05
+TWP HORIZONTAL DIFFUSIVITY M2/S = 0.1
+TWP INITIAL BED MASS KG/M2 = 0
+```
 
-The normal DHSVM surface/subsurface routing scheme uses 4 neighbors
-and directs cell outflow to all down-gradient neighbors ("D4").  Another
-method, which uses 8 neighbors and directs outflow only to the
-neighbor with the steepest gradient ("D8").  The latter has proved useful
-in very low-gradient areas that span several cells.  To enable D8
-routing add this option
+## Configuration reference
 
-    -D DHSVM_D8:BOOL=ON
-    
-to the configuration. D4 is the default.  
+| Key | Unit or format | Default | Purpose |
+|---|---|---:|---|
+| `ATMS MAP FILE` | DHSVM raster | `none` | Airborne MP deposition rate in kg m^-2 day^-1. |
+| `TWP MAP FILE` | DHSVM raster | `none` | Cell-aggregated AADT in vehicles day^-1. For NetCDF, use variable `MP.TWPmp`. |
+| `ANTECEDENT DRY DAYS` | day | `0` | Initial dry-period source accumulation. |
+| `ATMS MP LOWER THRESH` | m timestep^-1 | `0` | Runoff depth at or below which airborne MP wash-off is zero. |
+| `ATMS MP UPPER THRESH` | m timestep^-1 | `0.001` | Runoff depth at or above which airborne MP wash-off is complete. |
+| `TWP LOWER THRESH` | m timestep^-1 | `0` | Runoff depth at or below which TWP wash-off is zero. |
+| `TWP UPPER THRESH` | m timestep^-1 | `0.001` | Runoff depth at or above which TWP wash-off is complete. Must exceed the lower threshold. |
+| `TWP SCALE FILE` | text file or `none` | `none` | One nonnegative source multiplier per timestep. The run stops for an invalid or exhausted file. |
+| `TWP EMISSION FACTOR MG/VKM` | mg vehicle^-1 km^-1 | `51.1` | tire wear emission factor. |
+| `TWP SOURCE COEFFICIENT` | dimensionless | `1` | Source adjustment coefficient (`f_ct`). |
+| `TWP PARTICLE DIAMETER M` | m | `0.000075` | Median particle diameter (`d50`). |
+| `TWP SUBMERGED SPECIFIC DENSITY` | dimensionless | `0.3` | `(rho_p-rho_w)/rho_w`; 0.3 corresponds to 1300 kg m^-3 particles in 1000 kg m^-3 water. |
+| `TWP KINEMATIC VISCOSITY M2/S` | m^2 s^-1 | `0.000001` | Water kinematic viscosity. |
+| `TWP VON KARMAN CONSTANT` | dimensionless | `0.41` | Von Karman constant used in the Rouse number. |
+| `TWP REFERENCE HEIGHT RATIO` | dimensionless | `0.05` | Nominal reference height divided by flow depth. |
+| `TWP HORIZONTAL DIFFUSIVITY M2/S` | m^2 s^-1 | `0` | Stream-link longitudinal diffusivity; zero disables diffusion. |
+| `TWP INITIAL BED MASS KG/M2` | kg m^-2 | `0` | Initial re-entrainable TWP bed mass for every stream segment. |
 
-### Snow-only mode ###
+## Preparing the TWP map
 
-If DHSVM is configured with this option,
+The TWP raster represents cell-aggregated AADT, not a point-station table:
 
-   -D DHSVM_SNOW_ONLY:BOOL=ON
-   
-an additional executable is built, `DHSVM_SNOW`, which operates in
-snow-only mode. 
+1. Project traffic-count locations into the DHSVM grid coordinate system.
+2. Assign every station to a DHSVM cell.
+3. Sum AADT where multiple stations fall in the same cell.
+4. Write a raster with the dimensions, orientation, and format of the other
+   DHSVM input maps.
+5. Use zero for cells without a source; do not use missing values inside the
+   modeled basin.
+6. For temporal variation, provide one nonnegative scale value for every model
+   timestep.
 
+The source conversion is:
+
+```text
+P_TWP = f_ct E AADT DX / 1000
+q_TWP = P_TWP 1e-6 / 86400
+```
+
+Here `P_TWP` is mg day^-1, `q_TWP` is kg s^-1, `E` is the emission factor in
+mg vehicle^-1 km^-1, and `DX` is grid spacing in meters. The temporal scale
+factor is applied to `q_TWP` each timestep.
+
+Wash-off is linear between the configured runoff thresholds:
+
+```text
+F = 0                                      IExcess <= lower
+F = (IExcess-lower)/(upper-lower)          lower < IExcess < upper
+F = 1                                      IExcess >= upper
+```
+
+## Channel transport
+
+Hydrologic network routing supplies advection. Optional link-to-link diffusion
+uses:
+
+```text
+M_diff = epsilon_s A (C_up-C_down) Dt / L
+```
+
+The stream segment is treated as rectangular. Flow depth is the greater of
+storage depth and the Manning normal depth calculated from routed flow, width,
+slope, and roughness. Particle settling velocity is evaluated from particle
+diameter, submerged density, and water viscosity. The water-column/near-bed
+concentration ratio uses a numerically integrated Rouse profile.
+
+The equilibrium reference concentration follows the van Rijn suspended-load
+formulation. Water-column/bed exchange is:
+
+```text
+Delta M = ws (Ceq-Ca) width length Dt
+```
+
+Positive exchange entrains stored bed mass; negative exchange deposits
+suspended mass. Entrainment is limited by available bed mass and deposition by
+available suspended mass, preserving mass. The formulation follows L. C. van
+Rijn (1984), *Journal of Hydraulic Engineering* 110(11), 1613-1641,
+DOI [10.1061/(ASCE)0733-9429(1984)110:11(1613)](https://doi.org/10.1061/(ASCE)0733-9429(1984)110:11(1613)).
+
+## TWP outputs
+
+| File or variable | Quantity | Unit |
+|---|---|---|
+| `TWP.Load.Only` | TWP mass leaving each recorded stream segment per timestep | kg |
+| `TWP.Conc.Only` | Mixed depth-averaged TWP concentration | kg m^-3 |
+| `MP.TWPmp` | Input TWP/AADT raster variable | vehicles day^-1 per cell |
+| `MP.mp_accum` | Accumulated surface microplastic state | model state unit |
+
+For concentration conversion, `1 kg m^-3 = 1000 mg L^-1`.
+
+The DHSVM mass-balance output also includes particle input, surface storage,
+channel export, and residual/error terms. Review the residual when validating a
+new setup.
+
+## Constraints and current limitations
+
+- `TWP UPPER THRESH` must be greater than `TWP LOWER THRESH`.
+- Particle diameter, submerged density, viscosity, and the von Karman constant
+  must be positive.
+- The reference-height ratio must be between zero and one.
+- Diffusivity and initial bed mass cannot be negative.
+- TWP map values and temporal scale factors cannot be negative.
+- A complete TWP simulation requires a routed stream network. Unit-hydrograph
+  mode does not perform channel particle routing.
+- The TWP implementation is a research extension and should be checked against
+  field data and independent mass-balance calculations before operational use.
+
+## License and attribution
+
+Retain the upstream DHSVM attribution and license terms that apply to this
+source. Publications using this fork should cite DHSVM, the relevant TWP or
+microplastics methodology, and the exact Git commit or release tag used.

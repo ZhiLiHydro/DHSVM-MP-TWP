@@ -143,22 +143,22 @@ unsigned char LocateKey(const char *Key, char *Entry, LISTPTR Input)
       /* Check whether the current line contains a key-entry pair */
 
       if (IsKeyEntryPair(Buffer)) {
-	StrPtr = strchr(Buffer, SEPARATOR);
-	*StrPtr = '\0';
-	/* strcpy(KeyBuffer, Buffer); */
-	memmove(KeyBuffer, Buffer, strlen(Buffer)+1);
-	++StrPtr;
-    /* strcpy(EntryBuffer, StrPtr); */
-	memmove(EntryBuffer, StrPtr, strlen(StrPtr)+1);
-	Strip(KeyBuffer);
-	MakeKeyString(KeyBuffer);
-	if (strcmp(Key, KeyBuffer) == 0) {
-	  Found = TRUE;
-	  Strip(EntryBuffer);
-	  /* strcpy(Entry, EntryBuffer); */
-	  memmove(Entry, EntryBuffer, strlen(EntryBuffer)+1);
-	  break;
-	}
+        StrPtr = strchr(Buffer, SEPARATOR);
+        *StrPtr = '\0';
+        /* strcpy(KeyBuffer, Buffer); */
+        memmove(KeyBuffer, Buffer, strlen(Buffer)+1);
+        ++StrPtr;
+          /* strcpy(EntryBuffer, StrPtr); */
+        memmove(EntryBuffer, StrPtr, strlen(StrPtr)+1);
+        Strip(KeyBuffer);
+        MakeKeyString(KeyBuffer);
+        if (strcmp(Key, KeyBuffer) == 0) {
+          Found = TRUE;
+          Strip(EntryBuffer);
+          /* strcpy(Entry, EntryBuffer); */
+          memmove(Entry, EntryBuffer, strlen(EntryBuffer)+1);
+          break;
+        }
       }
       /* Get the next line */
       Input = Input->Next;

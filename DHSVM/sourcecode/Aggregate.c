@@ -39,7 +39,7 @@
 void Aggregate(MAPSIZE *Map, OPTIONSTRUCT *Options, TOPOPIX **TopoMap,
 	       LAYER *Soil, LAYER *Veg, VEGPIX **VegMap, EVAPPIX **Evap,
 	       PRECIPPIX **Precip, PIXRAD **RadMap, SNOWPIX **Snow,
-	       SOILPIX **SoilMap, AGGREGATED *Total, VEGTABLE *VType,
+	       SOILPIX **SoilMap, MPPIX **MPMap, AGGREGATED *Total, VEGTABLE *VType,
 	       ROADSTRUCT **Network, CHANNEL *ChannelData, float *roadarea,
          int Dt)
 {
@@ -175,6 +175,25 @@ void Aggregate(MAPSIZE *Map, OPTIONSTRUCT *Options, TOPOPIX **TopoMap,
 		SoilMap[y][x].ChannelInt = 0.0;
 		Total->RoadInt += SoilMap[y][x].RoadInt;
 		SoilMap[y][x].RoadInt = 0.0;
+
+    /*aggregate microplastics data*/
+    if (Options->Plastics){
+      /*Total Incoming*/
+      Total->MP.AtmsMP += MPMap[y][x].MPrunoff;
+      /*Total Remaining*/
+      Total->MP.atm_mp += MPMap[y][x].atm_mp;
+      Total->MP.Uatm_mp += MPMap[y][x].Uatm_mp;
+
+      /*Total Transit to Channel*/
+      //Total->MP.atm_wash += MPMap[y][x].atm_wash;
+      //Total->MP.Uatm_wash += MPMap[y][x].Uatm_wash;
+
+      /*Total Channel Interception of Mp*/
+      Total->MP.ChannelMPInt += MPMap[y][x].ChannelMPInt;
+      MPMap[y][x].ChannelMPInt = 0.0;
+
+    }
+
       }
     }
   }

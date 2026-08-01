@@ -33,7 +33,7 @@ ExecDump()
 void ExecDump(MAPSIZE *Map, DATE *Current, DATE *Start, OPTIONSTRUCT *Options,
   DUMPSTRUCT *Dump, TOPOPIX **TopoMap, EVAPPIX **EvapMap,
   PIXRAD **RadMap, PRECIPPIX **PrecipMap, SNOWPIX **SnowMap,
-  MET_MAP_PIX **MetMap, VEGPIX **VegMap, LAYER *Veg, SOILPIX **SoilMap,
+  MET_MAP_PIX **MetMap, VEGPIX **VegMap, LAYER *Veg, SOILPIX **SoilMap, MPPIX **MPMap,
   ROADSTRUCT **Network, CHANNEL *ChannelData, LAYER *Soil,
   AGGREGATED *Total, UNITHYDRINFO *HydrographInfo,
   float *Hydrograph)
@@ -104,7 +104,7 @@ void ExecDump(MAPSIZE *Map, DATE *Current, DATE *Start, OPTIONSTRUCT *Options,
           PrintDate(Current, stdout);
           fprintf(stdout, "\n");
           DumpMap(Map, Current, &(Dump->DMap[i]), TopoMap, EvapMap,
-            PrecipMap, RadMap, SnowMap, SoilMap, Soil, VegMap,
+            PrecipMap, RadMap, SnowMap, SoilMap, Soil, VegMap, MPMap, 
             Veg, Network, Options);
         }
       }
@@ -118,7 +118,7 @@ DumpMap()
 void DumpMap(MAPSIZE *Map, DATE *Current, MAPDUMP *DMap, TOPOPIX **TopoMap,
   EVAPPIX **EvapMap, PRECIPPIX **PrecipMap, PIXRAD **RadMap,
   SNOWPIX **SnowMap, SOILPIX **SoilMap, LAYER *Soil,
-  VEGPIX **VegMap, LAYER *Veg, ROADSTRUCT **Network,
+  VEGPIX **VegMap, MPPIX **MPMap, LAYER *Veg, ROADSTRUCT **Network,
   OPTIONSTRUCT *Options)
 {
   const char *Routine = "DumpMap";
@@ -1162,6 +1162,76 @@ void DumpMap(MAPSIZE *Map, DATE *Current, MAPDUMP *DMap, TOPOPIX **TopoMap,
     else
       ReportError(VarIDStr, 66);
     break;
+
+  case 910:
+    if (!Options->Plastics) {
+      ReportError(VarIDStr, 67);
+    }
+    if (DMap->Resolution == MAP_OUTPUT) {
+      for (y = 0; y < Map->NY; y++)
+        for (x = 0; x < Map->NX; x++)
+          ((float *)Array)[y * Map->NX + x] = MPMap[y][x].AtmsMP;
+      Write2DMatrix(DMap->FileName, Array, DMap->NumberType, Map, DMap, Index);
+
+    }
+    else if (DMap->Resolution == IMAGE_OUTPUT) {
+      for (y = 0; y < Map->NY; y++)
+        for (x = 0; x < Map->NX; x++)
+          ((unsigned char *)Array)[y * Map->NX + x] =
+          (unsigned char)((MPMap[y][x].AtmsMP - Offset) / Range * MAXUCHAR);
+      Write2DMatrix(DMap->FileName, Array, NC_BYTE, Map, DMap, Index);
+
+    }
+    else
+      ReportError(VarIDStr, 66);
+    break;
+
+  case 912:
+    if (!Options->Plastics) {
+      ReportError(VarIDStr, 67);
+    }
+    if (DMap->Resolution == MAP_OUTPUT) {
+      for (y = 0; y < Map->NY; y++)
+        for (x = 0; x < Map->NX; x++)
+          ((float *)Array)[y * Map->NX + x] = MPMap[y][x].mp_accum;
+      Write2DMatrix(DMap->FileName, Array, DMap->NumberType, Map, DMap, Index);
+
+    }
+    else if (DMap->Resolution == IMAGE_OUTPUT) {
+      for (y = 0; y < Map->NY; y++)
+        for (x = 0; x < Map->NX; x++)
+          ((unsigned char *)Array)[y * Map->NX + x] =
+          (unsigned char)((MPMap[y][x].mp_accum - Offset) / Range * MAXUCHAR);
+      Write2DMatrix(DMap->FileName, Array, NC_BYTE, Map, DMap, Index);
+
+    }
+    else
+      ReportError(VarIDStr, 66);
+    break;
+
+  case 913:
+    if (!Options->Plastics) {
+      ReportError(VarIDStr, 67);
+    }
+    if (DMap->Resolution == MAP_OUTPUT) {
+      for (y = 0; y < Map->NY; y++)
+        for (x = 0; x < Map->NX; x++)
+          ((float *)Array)[y * Map->NX + x] = MPMap[y][x].Uatm_mp;
+      Write2DMatrix(DMap->FileName, Array, DMap->NumberType, Map, DMap, Index);
+
+    }
+    else if (DMap->Resolution == IMAGE_OUTPUT) {
+      for (y = 0; y < Map->NY; y++)
+        for (x = 0; x < Map->NX; x++)
+          ((unsigned char *)Array)[y * Map->NX + x] =
+          (unsigned char)((MPMap[y][x].Uatm_mp - Offset) / Range * MAXUCHAR);
+      Write2DMatrix(DMap->FileName, Array, NC_BYTE, Map, DMap, Index);
+
+    }
+    else
+      ReportError(VarIDStr, 66);
+    break;
+
   }
 }
 

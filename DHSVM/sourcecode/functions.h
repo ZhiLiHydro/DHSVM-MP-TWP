@@ -23,7 +23,7 @@
 void Aggregate(MAPSIZE *Map, OPTIONSTRUCT *Options, TOPOPIX **TopoMap,
 	       LAYER *Soil, LAYER *Veg, VEGPIX **VegMap, EVAPPIX **Evap,
 	       PRECIPPIX **Precip, PIXRAD **RadMap, SNOWPIX **Snow,
-	       SOILPIX **SoilMap, AGGREGATED *Total, VEGTABLE *VType,
+	       SOILPIX **SoilMap, MPPIX **MPMap, AGGREGATED *Total, VEGTABLE *VType,
 	       ROADSTRUCT **Network, CHANNEL *ChannelData, float *roadarea, int Dt);
 
 void Avalanche(MAPSIZE *Map, TOPOPIX **TopoMap, TIMESTRUCT *Time, OPTIONSTRUCT *Options,
@@ -40,6 +40,15 @@ double CalcDistance(COORD *LocA, COORD *LocB);
 float CalcEffectiveKh(int NSoilLayers, float Top, float Bottom,
 		      float *SoilDepth, float *KhDry, float *KhSol,
 		      float *Moisture, float *Porosity, float *TSoil);
+
+void CalcMPBuildupWashoff (int y, int x, float DX, float DY,
+  int Dt, int InfiltOption, int MaxSoilLayers, int MaxVegLayers, PIXMET *LocalMet,
+  ROADSTRUCT *LocalNetwork, PRECIPPIX *LocalPrecip,
+  VEGTABLE *VType, VEGPIX *LocalVeg, SOILTABLE *SType,
+  SOILPIX *LocalSoil, SNOWPIX *LocalSnow, CHANNEL *ChannelData, MPPIX *LocalMP);
+
+int ChannelSavePollutantLoading(char *tstring, Channel * net, FILE *out2, FILE *out3, 
+			int flag);
 
 float CalcKhDry(float Density);
 
@@ -71,7 +80,7 @@ void draw(DATE *Day, int first, int DayStep, MAPSIZE *Map, int NGraphics,
 
 void DumpMap(MAPSIZE *Map, DATE *Current, MAPDUMP *DMap, TOPOPIX **TopoMap,
 	     EVAPPIX **EvapMap, PRECIPPIX **PrecipMap, PIXRAD **RadMap,
-	     SNOWPIX **Snowap, SOILPIX **SoilMap, LAYER *Soil, VEGPIX **VegMap, 
+	     SNOWPIX **Snowap, SOILPIX **SoilMap, LAYER *Soil, VEGPIX **VegMap, MPPIX **MPMap,
          LAYER *Veg, ROADSTRUCT **Network, OPTIONSTRUCT *Options);
 
 void DumpPix(DATE *Current, int first, FILES *OutFile, EVAPPIX *Evap,
@@ -85,7 +94,7 @@ void DumpTopo(MAPSIZE *Map, TOPOPIX **TopoMap);
 void ExecDump(MAPSIZE *Map, DATE *Current, DATE *Start, OPTIONSTRUCT *Options,
 	      DUMPSTRUCT *Dump, TOPOPIX **TopoMap, EVAPPIX **EvapMap, PIXRAD **RadiMap,
 	      PRECIPPIX ** PrecipMap, SNOWPIX **SnowMap, MET_MAP_PIX **MetMap, 
-          VEGPIX **VegMap, LAYER *Veg, SOILPIX **SoilMap, ROADSTRUCT **Network, 
+          VEGPIX **VegMap, LAYER *Veg, SOILPIX **SoilMap, MPPIX **MPMap, ROADSTRUCT **Network, 
           CHANNEL *ChannelData, LAYER *Soil, AGGREGATED *Total, 
 	      UNITHYDRINFO *HydrographInfo, float *Hydrograph);
 
@@ -199,6 +208,9 @@ void InitParameterMaps(OPTIONSTRUCT *Options, MAPSIZE *Map, int Id,
 
 int InitPixDump(LISTPTR Input, MAPSIZE *Map, uchar **BasinMask, char *Path,
 		int NPix, PIXDUMP **Pix, OPTIONSTRUCT *Options);
+
+void InitPlasticMap(OPTIONSTRUCT *Options, LISTPTR Input, MAPSIZE *Map, MPPIX ***MPMap);
+void UpdateTWPScale(void);
     
 void InitPptMultiplierMap(OPTIONSTRUCT *Options, MAPSIZE *Map, float ***PptMultiplierMap);                            
 
@@ -333,7 +345,7 @@ void RouteSubSurface(int Dt, MAPSIZE *Map, TOPOPIX **TopoMap,
 void RouteSurface(MAPSIZE * Map, TIMESTRUCT * Time, TOPOPIX ** TopoMap,
   SOILPIX ** SoilMap, OPTIONSTRUCT *Options,
   UNITHYDR ** UnitHydrograph, UNITHYDRINFO * HydrographInfo, float *Hydrograph,
-  DUMPSTRUCT *Dump, VEGPIX ** VegMap, VEGTABLE * VType, CHANNEL *ChannelData);
+  DUMPSTRUCT *Dump, VEGPIX ** VegMap, VEGTABLE * VType, CHANNEL *ChannelData, MPPIX ** MPMap );
 
 float SatVaporPressure(float Temperature);
 

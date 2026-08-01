@@ -251,6 +251,7 @@ typedef struct {
   int SnowSlide;                /* if snow sliding option is true */
   int PrecipSepr;               /* if TRUE use separate input of rain and snow */
   int SnowStats;               /* if TRUE dumps snow statistics for each water year */
+  int Plastics;               /* options for if using plastics module */
   char PrismDataPath[BUFSIZE + 1];
   char PrismDataExt[BUFSIZE + 1];
   char ShadingDataPath[BUFSIZE + 1];
@@ -415,6 +416,7 @@ typedef struct {
   float KsLat;      /* Soil Lateral Conductivity */
   float *Porosity;          /* Soil Porosity */
   float *FCap;      /* soil field capacity */
+
 } SOILPIX;
 
 typedef struct {
@@ -601,6 +603,18 @@ typedef struct {
   float CumSnowVaporFlux;
   float CumCulvertReturnFlow;
   float CumCulvertToChannel;
+
+  /*MP mass vars*/
+  float *CumDeposition;
+  float *CumBuildup;
+  float *CumRunoffLoad;
+  float *StartLoadStorage;
+  float *oldLoadStorage;
+
+  /*MP MASS*/
+
+  float OldMPStorage;
+
 } WATERBALANCE;
 
 typedef struct {
@@ -616,6 +630,35 @@ struct node {
   int x;
   int y;
 };
+
+typedef struct {
+  float AtmsMP;           /* Deposition rate of dry airborne MP deposition () */
+  float TWP;              /* Deposition rate of tire wear particle () */
+  float mp_accum;         /* Accumulated MP at grid cell */
+  float atm_init;         /* initial atm mp condition */
+  float atm_mp;           /* currrent atm mp in non-impervious portion of cell */
+  float atm_wash;         /* out-going atm mp in non-impervious portion of cell */
+  float Uatm_mp;          /* currrent atm mp in impervious portion of cell */
+  float Uatm_wash;        /* out-going atm mp in impervious portion of cell */
+  float MPrunoff;         /* out-going atm mp in impervious portion of cell */
+
+  float ChannelMPInt;		/* amount of microplastics flow intercepted by the channel */
+
+} MPPIX;
+
+/* WQ washoff continuity totals */
+typedef struct
+{                                  /* All loading totals are in g */
+   float initLoad;                /* initial loading (g) */
+   float buildup;				   /* loading added from buildup (g) */
+   float deposition;              /* loading added from wet deposition (g)*/
+   float runoff;                  /* loading removed by runoff (g) */
+   float runon;
+   float storedload;              /* remaining surface washoff loading (sum of remainning totalload) (g)*/
+   float finalLoad;               /* remaining total surface buildup (sum of landfactor[i].builup)  (g) */
+   //float decay;
+   float pctError;                 /* continuity error (%) */
+}  URBANLOADING;     
  
 typedef struct {
   EVAPPIX Evap;
@@ -625,6 +668,8 @@ typedef struct {
   SNOWPIX Snow;
   SOILPIX Soil;
   VEGPIX Veg;
+  MPPIX MP;
+  
   float NetRad;
   float SoilWater;
   float CanopyWater;
@@ -634,6 +679,10 @@ typedef struct {
   unsigned long Saturated;
   float CulvertReturnFlow;
   float CulvertToChannel;
+
+ 
+
+
 } AGGREGATED;
 
 #endif

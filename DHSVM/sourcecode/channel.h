@@ -94,6 +94,17 @@ struct _channel_rec_ {
 
   CHANRVEG rveg;        /* riparian veg sub-structure */
 
+  /* MP terms*/
+  float mpLatIn;
+  float mpInMass;
+  float mpOutMass;
+  float mpStoredMass;
+  float mplast_StoredMass;
+  float mpNewQual;              /* current washoff concentration (g/m3)*/
+  float mpBedMass;
+  float mpDiffMass;
+
+
   struct _channel_rec_ *outlet;	/* NULL if does not drain to another segment */
   struct _channel_rec_ *next;
 };
@@ -118,7 +129,11 @@ int channel_route_network(Channel *net, int deltat);
 int channel_save_outflow(double time, Channel * net, FILE *file, FILE *file2);
 int channel_save_outflow_text(char *tstring, Channel *net, FILE *out,
 			      FILE *out2, int flag);
+int ChannelSaveMPLoading(char *tstring, Channel *net, FILE *out2, FILE *out3, int flag);
 void channel_free_network(Channel *net);
+int channel_step_initialize_mp_network(Channel *net);
+int channel_mp_route_network(Channel *net, int deltat);
+void AllocateChannelMPVar(Channel *Head);
 
 /* Module */
 void channel_init(void);

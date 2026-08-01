@@ -80,6 +80,7 @@ int main(int argc, char **argv)
     {0, 0.0, NULL, NULL, NULL, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, NULL, NULL},			                /* SOILPIX */
     {0, 0, 0.0, 0.0, 0.0, NULL, NULL, NULL, NULL, 0.0},                             /* VEGPIX */
+    {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},                             /* MPPIX */
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0l, 0.0, 0.0
   };
   CHANNEL ChannelData = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
@@ -93,6 +94,7 @@ int main(int argc, char **argv)
   MAPSIZE Map;					/* Size and location of model area */
   MAPSIZE Radar;				/* Size and location of area covered by precipitation radar */
   MAPSIZE MM5Map;				/* Size and location of area covered by MM5 input files */
+  MPPIX **MPMap = NULL;       /*Microplastics*/
   GRID Grid;
   METLOCATION *Stat = NULL;
   OPTIONSTRUCT Options;			/* Structure with information which program options to follow */
@@ -156,6 +158,9 @@ int main(int argc, char **argv)
 
   InitTerrainMaps(Input, &Options, &Map, &Soil, &Veg, &TopoMap, SType, &SoilMap, VType, &VegMap);
 
+  if (Options.Plastics){
+    InitPlasticMap(&Options, Input, &Map, &MPMap);}
+
   InitSnowMap(&Map, &SnowMap, &Time);
 
   InitMappedConstants(Input, &Options, &Map, &SnowMap);
@@ -163,7 +168,7 @@ int main(int argc, char **argv)
   CheckOut(&Options, Veg, Soil, VType, SType, &Map, TopoMap, VegMap, SoilMap);
 
 #ifdef TOPO_DUMP
-  DumpTopo(&Map, TopoMap);
+  DumpTopo(&Map, TopoMap); 
 #endif
   
   if (Options.HasNetwork)
@@ -247,14 +252,35 @@ int main(int argc, char **argv)
   /* Done with initialization, delete the list with input strings */
   DeleteList(Input);
 
+  /*****************************************************************************
+  Water Quality Components Initialization Procedures 
+  *****************************************************************************/
+
+  if (Options.Plastics){
+     //InitMPAggregated(&Options, 1, &Total, &Mass);
+        if (Options.HasNetwork){ 
+          /* allocate memories for channel variables */
+            //AllocateChannelMPVar(ChannelData.streams); // change types to 1 for now AllocateChannelWQVar(Pollut.NTypes, ChannelData.streams); 
+            /* initialize files that store sediment load */
+          InitChannelMPDump(&ChannelData, Dump.Path);
+      }
+
+     //printf("\nSTARTING CHMICAL MAP INITIALIZATION PROCEDURES\n\n");
+     //InitOtherWQMap(1, &Map, TopoMap, &SoilMap, VType, &VegMap);
+	    //InitChemMap(Input, &Map, &Soil, SCType, SType, VType, TopoMap, &SoilMap, &VegMap, &ChemMap);
+}
+ 
+ 
+ /*****************************************************************************/
   /* setup for mass balance calculations */
-  Aggregate(&Map, &Options, TopoMap, &Soil, &Veg, VegMap, EvapMap, PrecipMap,
-	      RadiationMap, SnowMap, SoilMap, &Total, VType, Network, &ChannelData, &roadarea, Time.Dt);
+  Aggregate(&Map, &Options, TopoMap, &Soil, &Veg,  VegMap, EvapMap, PrecipMap,
+	      RadiationMap, SnowMap, SoilMap, MPMap, &Total, VType, Network, &ChannelData, &roadarea, Time.Dt);
 
   Mass.StartWaterStorage =
     Total.Soil.IExcess + Total.CanopyWater + Total.SoilWater + Total.Snow.Swq +
     Total.Soil.SatFlow;
   Mass.OldWaterStorage = Mass.StartWaterStorage;
+  Mass.OldMPStorage = Total.MP.atm_mp + Total.MP.Uatm_mp;
 
   /* computes the number of grid cell contributing to one segment */
   if (Options.StreamTemp) 
@@ -290,10 +316,15 @@ int main(int argc, char **argv)
 		InFiles.RadarFile, &Radar, RadarMap, &SolarGeo, TopoMap, 
                 SoilMap, MM5Input, PrecipLapseMap, WindModel, &MM5Map);
 
+    if (Options.Plastics)
+      UpdateTWPScale();
+
     /* initialize channel/road networks for time step */
     if (Options.HasNetwork) {
       channel_step_initialize_network(ChannelData.streams);
       channel_step_initialize_network(ChannelData.roads);
+       if (Options.Plastics){
+        channel_step_initialize_mp_network(ChannelData.streams);}
     }
 
 
@@ -348,6 +379,18 @@ int main(int argc, char **argv)
             &(Total.Rad), &ChannelData, SkyViewMap);
 	 
 		  PrecipMap[y][x].SumPrecip += PrecipMap[y][x].Precip;
+///////////////////////////////////////////////////////////////////////////////////////////
+
+       /* water quality block */
+		  if (Options.Plastics) { 
+        CalcMPBuildupWashoff(y, x, Map.DX, Map.DY, Time.Dt, Options.Infiltration, Soil.MaxLayers,
+            Veg.MaxLayers, &LocalMet, &(Network[y][x]), &(PrecipMap[y][x]),
+            &(VType[VegMap[y][x].Veg - 1]), &(VegMap[y][x]), &(SType[SoilMap[y][x].Soil - 1]),
+            &(SoilMap[y][x]), &(SnowMap[y][x]), &ChannelData,  &(MPMap[y][x]));
+
+      }
+  ///////////////////////////////////////////////////////////////////////////////////////////
+        
 		}
 	  }
     }
@@ -365,14 +408,17 @@ int main(int argc, char **argv)
 		    SType, SoilMap, &ChannelData, &Time, &Options, Dump.Path,
 		    MaxStreamID, SnowMap);
 
-    if (Options.HasNetwork)
+    if (Options.HasNetwork){
       RouteChannel(&ChannelData, &Time, &Map, TopoMap, SoilMap, &Total, 
 		   &Options, Network, SType, PrecipMap, LocalMet.Tair, LocalMet.Rh, SnowMap);
+      if (Options.Plastics) { 
+        RouteMPChannel(&ChannelData, &Time, &Map, TopoMap, SoilMap, &Total, MPMap);}
+    }
 
     if (Options.Extent == BASIN)
       RouteSurface(&Map, &Time, TopoMap, SoilMap, &Options,
         UnitHydrograph, &HydrographInfo, Hydrograph,
-        &Dump, VegMap, VType, &ChannelData);
+        &Dump, VegMap, VType, &ChannelData, MPMap);
 
 
 #endif
@@ -385,7 +431,7 @@ int main(int argc, char **argv)
 	   MetMap, Network, &Options);
     
     Aggregate(&Map, &Options, TopoMap, &Soil, &Veg, VegMap, EvapMap, PrecipMap,
-	      RadiationMap, SnowMap, SoilMap, &Total, VType, Network, &ChannelData, &roadarea, Time.Dt);
+	      RadiationMap, SnowMap, SoilMap, MPMap, &Total, VType, Network, &ChannelData, &roadarea, Time.Dt);
     
     if (Options.SnowStats)
       SnowStats(&(Time.Current), &Map, &Options, TopoMap, SnowMap, Time.Dt);
@@ -394,14 +440,14 @@ int main(int argc, char **argv)
 
     ExecDump(&Map, &(Time.Current), &(Time.Start), &Options, &Dump, TopoMap,
 	     EvapMap, RadiationMap, PrecipMap, SnowMap, MetMap, VegMap, &Veg, 
-		 SoilMap, Network, &ChannelData, &Soil, &Total, &HydrographInfo,Hydrograph);
+		 SoilMap, MPMap, Network, &ChannelData, &Soil, &Total, &HydrographInfo,Hydrograph);
 	
     IncreaseTime(&Time);
 	t += 1;
   }
 
   ExecDump(&Map, &(Time.Current), &(Time.Start), &Options, &Dump, TopoMap,
-	   EvapMap, RadiationMap, PrecipMap, SnowMap, MetMap, VegMap, &Veg, SoilMap,
+	   EvapMap, RadiationMap, PrecipMap, SnowMap, MetMap, VegMap, &Veg, SoilMap, MPMap, 
 	   Network, &ChannelData, &Soil, &Total, &HydrographInfo, Hydrograph);
 
 #ifndef SNOW_ONLY

@@ -50,3 +50,18 @@ int TotNumGap;          /* total number of grid cells with a gap structure */
 
 float SNOWSLIDE1;       /*Avalanche parameter*/
 float SNOWSLIDE2;       /*Avalanche parameter */
+
+float DryDays;
+float ATMS_LOW;              /* Lower boundary of runoff to wash off ATMS MP */
+float ATMS_UP;               /* Upper boundary of runoff to wash off ATMS MP */
+float TWP_LOW;               /* Lower boundary of runoff to wash off TWP */
+float TWP_UP;                /* Upper boundary of runoff to wash off TWP */
+int TWP_ON;
+float TWP_SCALE;
+float TWP_D50;
+float TWP_DENSITY;
+float TWP_VISCOSITY;
+float TWP_KAPPA;
+float TWP_REF_RATIO;
+float TWP_DIFFUSIVITY;
+float TWP_BED_INIT;

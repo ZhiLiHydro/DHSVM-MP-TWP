@@ -100,6 +100,7 @@ void InitConstants(LISTPTR Input, OPTIONSTRUCT *Options, MAPSIZE *Map,
     {"OPTIONS", "PRECIPITATION SEPARATION", "", "FALSE" },
     {"OPTIONS", "SNOW STATISTICS", "", "FALSE" },
     {"OPTIONS", "ROUTING NEIGHBORS", "", "4"},
+    {"OPTIONS", "PLASTICS", "", "4"},
     {"AREA", "COORDINATE SYSTEM", "", ""},
     {"AREA", "EXTREME NORTH", "", ""},
     {"AREA", "EXTREME WEST", "", ""},
@@ -352,6 +353,15 @@ void InitConstants(LISTPTR Input, OPTIONSTRUCT *Options, MAPSIZE *Map,
     Options->SnowStats = FALSE;
   else
     ReportError(StrEnv[snowstats].KeyName, 51);
+
+
+  /* Determine if calculates plastics */
+  if (strncmp(StrEnv[plastics].VarStr, "TRUE", 4) == 0)
+    Options->Plastics = TRUE;
+  else if (strncmp(StrEnv[plastics].VarStr, "FALSE", 5) == 0)
+    Options->Plastics = FALSE;
+  else
+    ReportError(StrEnv[plastics].KeyName, 51);
   
   /* Determine if use separate input of rain and snow */
   if (strncmp(StrEnv[sepr].VarStr, "TRUE", 4) == 0)

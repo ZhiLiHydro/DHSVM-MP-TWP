@@ -275,7 +275,23 @@ struct {
       "Min Albedo during accumulation", NC_FLOAT, FALSE, FALSE, FALSE, 0}, {        
   806, "Snow.MinAlbedoMelt",
       "Min Albedo during melt", "%.4f", "", 
-      "Min Albedo during melt", NC_FLOAT, FALSE, FALSE, FALSE, 0}, {   
+      "Min Albedo during melt", NC_FLOAT, FALSE, FALSE, FALSE, 0}, {  
+  910, "MP.ATMSmp",
+      "Atms MP Deposition Rate", "%.4g",
+      "(kg/m2)/timestep", "Airborne Microplastics Deposition Rate",
+      NC_FLOAT, FALSE, FALSE, FALSE, 0}, { 
+  911, "MP.TWPmp",
+      "Cell Aggregated AADT", "%.4g",
+      "vehicles/day", "Cell Aggregated Annual Average Daily Traffic",
+      NC_FLOAT, FALSE, FALSE, FALSE, 0}, { 
+  912, "MP.mp_accum",
+      "Accumulated microplastics", "%.4g",
+      "(kg)", "Tire Wear Particle Deposition Rate",
+      NC_FLOAT, FALSE, FALSE, FALSE, 0}, { 
+  913, "MP.Uatm_mp",
+      "Microplastics on Urban lands", "%.4g",
+      "(kg)", "MP on urban area",
+      NC_FLOAT, FALSE, FALSE, FALSE, 0}, {  
   ENDOFLIST, "", "", "", "", "",
       ENDOFLIST, ENDOFLIST, ENDOFLIST, ENDOFLIST, ENDOFLIST}
 };

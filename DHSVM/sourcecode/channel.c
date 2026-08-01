@@ -21,6 +21,7 @@ $Id: channel.c,v3.1.2 2014/1/2 Ning Exp $
 #include "constants.h"
 #include "tableio.h"
 #include "settings.h"
+#include "Calendar.h"
 
 /* for test msw */
 #define TEST_MAIN 0
@@ -259,6 +260,23 @@ static Channel *alloc_channel_segment(void)
   seg->outlet = NULL;
   seg->next = NULL;
 
+  /****************************** WQ modifications ******************************/
+
+    /* Initialize nutrient variables */
+  seg->mpLatIn = 0.0;
+  seg->mpInMass = 0.0;
+  seg->mpOutMass  = 0.0;
+  seg->mpStoredMass = 0.0;
+  seg->mpNewQual = 0.0;
+  seg->mpBedMass = 0.0;
+  seg->mpDiffMass = 0.0;
+  //seg->mplast_StoredMass = NULL;
+
+
+
+  /****************************** End of WQ modifications ******************************/
+
+
   /* Initialize the variables required by John's RBM model */
   seg->ISW = 0.;   /* incident shortwave radiation */
   seg->Beam = 0.;
@@ -313,6 +331,7 @@ void channel_routing_parameters(Channel *network, int deltat)
     segment->K = sqrt(segment->slope) * pow((double)y, 2.0 / 3.0) /
       (segment->class2->friction * segment->length);
     segment->X = exp(-segment->K * deltat);
+    segment->mpBedMass = TWP_ON ? TWP_BED_INIT * segment->class2->width * segment->length : 0.0;
   }
 
   return;
@@ -525,6 +544,127 @@ static int channel_route_segment(Channel * segment, int deltat)
   return (err);
 }
 
+
+static double twp_settling_velocity(void)
+{
+  double d = TWP_D50;
+  double r = TWP_DENSITY;
+  double v = TWP_VISCOSITY;
+  /* Dimensionally consistent form of the paper's three settling regimes. */
+  if (d <= 1.e-4)
+    return r * G * d * d / (18.0 * v);
+  if (d <= 1.e-3)
+    return 10.0 * v / d * (sqrt(1.0 + r * G * d * d * d / (100.0 * v * v)) - 1.0);
+  return 1.1 * sqrt(r * G * d);
+}
+
+static double twp_critical_shields(double dstar)
+{
+  if (dstar <= 4.0) return 0.24 / dstar;
+  if (dstar <= 10.0) return 0.14 * pow(dstar, -0.64);
+  if (dstar <= 20.0) return 0.04 * pow(dstar, -0.10);
+  if (dstar <= 150.0) return 0.013 * pow(dstar, 0.29);
+  return 0.055;
+}
+
+static double twp_rouse_factor(double rouse, double b)
+{
+  int i;
+  double u, sum = 0.0;
+  for (i = 0; i < 64; i++) {
+    u = b + (i + 0.5) * (1.0 - b) / 64.0;
+    sum += pow((1.0 - u) * b / (u * (1.0 - b)), rouse);
+  }
+  return fmax(sum / 64.0, 1.e-8);
+}
+
+static double twp_depth(Channel *segment, int deltat)
+{
+  double width = segment->class2->width;
+  double q = fmax(segment->outflow, segment->inflow + segment->lateral_inflow) / deltat;
+  double h1 = segment->storage / (width * segment->length);
+  double h2 = q > 0.0 ? pow(q * segment->class2->friction /
+    (width * sqrt(segment->slope)), 0.6) : 0.0;
+  return fmax(h1, h2);
+}
+
+static int channel_mp_route_segment(Channel *segment, int deltat)
+{
+  double volume = fmax(segment->last_storage + segment->lateral_inflow + segment->inflow,
+    segment->storage);
+  double mass = fmax(segment->mplast_StoredMass + segment->mpLatIn +
+    segment->mpInMass + segment->mpDiffMass, 0.0);
+  double h = twp_depth(segment, deltat);
+  double width = segment->class2->width;
+  double bedarea = width * segment->length;
+  double ws = twp_settling_velocity();
+  double ustar, dstar, theta, theta_cr, stage, a, b, rouse, factor;
+  double cbar, ca, ceq, exchange, out_mass;
+
+  if (TWP_ON && volume > 0.0 && h > 0.0 && (mass > 0.0 || segment->mpBedMass > 0.0)) {
+    /* Rouse profile and van Rijn equilibrium reference concentration. */
+    cbar = mass / volume;
+    ustar = sqrt(G * h * segment->slope);
+    a = fmax(TWP_REF_RATIO * h, TWP_D50);
+    b = fmin(a / h, 0.95);
+    rouse = ustar > 0.0 ? ws / (TWP_KAPPA * ustar) : 100.0;
+    factor = twp_rouse_factor(rouse, b);
+    ca = cbar / factor;
+    dstar = TWP_D50 * pow(TWP_DENSITY * G /
+      (TWP_VISCOSITY * TWP_VISCOSITY), 1.0 / 3.0);
+    theta = ustar * ustar / (TWP_DENSITY * G * TWP_D50);
+    theta_cr = twp_critical_shields(dstar);
+    stage = fmax((theta - theta_cr) / theta_cr, 0.0);
+    ceq = fmin(0.015 * TWP_D50 / a * pow(stage, 1.5) /
+      pow(dstar, 0.3), 0.65) * 1000.0 * (1.0 + TWP_DENSITY);
+    /* Conservative suspension-bed exchange. */
+    exchange = ws * (ceq - ca) * bedarea * deltat;
+    exchange = fmin(exchange, segment->mpBedMass);
+    exchange = fmax(exchange, -mass);
+    mass += exchange;
+    segment->mpBedMass -= exchange;
+  }
+
+  segment->mpNewQual = volume > 0.0 ? mass / volume : 0.0;
+  out_mass = fmin(mass, segment->mpNewQual * segment->outflow);
+  segment->mpOutMass = out_mass;
+  segment->mpStoredMass = mass - out_mass;
+  if (segment->outlet != NULL)
+    segment->outlet->mpInMass += out_mass;
+  return 0;
+}
+
+static void channel_mp_diffuse(Channel *net, int deltat)
+{
+  Channel *segment;
+  double v1, v2, m1, m2, h1, h2, area, distance, flux;
+  if (!TWP_ON || TWP_DIFFUSIVITY <= 0.0)
+    return;
+  for (segment = net; segment != NULL; segment = segment->next) {
+    if (!segment->outlet)
+      continue;
+    v1 = fmax(segment->last_storage + segment->lateral_inflow + segment->inflow, segment->storage);
+    v2 = fmax(segment->outlet->last_storage + segment->outlet->lateral_inflow +
+      segment->outlet->inflow, segment->outlet->storage);
+    if (v1 <= 0.0 || v2 <= 0.0)
+      continue;
+    m1 = fmax(segment->mplast_StoredMass + segment->mpLatIn + segment->mpInMass + segment->mpDiffMass, 0.0);
+    m2 = fmax(segment->outlet->mplast_StoredMass + segment->outlet->mpLatIn +
+      segment->outlet->mpInMass + segment->outlet->mpDiffMass, 0.0);
+    h1 = twp_depth(segment, deltat);
+    h2 = twp_depth(segment->outlet, deltat);
+    area = fmin(segment->class2->width * h1, segment->outlet->class2->width * h2);
+    distance = 0.5 * (segment->length + segment->outlet->length);
+    /* Conservative link-to-link Fickian diffusion. */
+    flux = TWP_DIFFUSIVITY * area * (m1 / v1 - m2 / v2) * deltat / distance;
+    flux = fmin(flux, m1);
+    flux = fmax(flux, -m2);
+    segment->mpDiffMass -= flux;
+    segment->outlet->mpDiffMass += flux;
+  }
+}
+
+
 /* -------------------------------------------------------------
 channel_route_network
 ------------------------------------------------------------- */
@@ -543,6 +683,35 @@ int channel_route_network(Channel * net, int deltat)
         err += channel_route_segment(current, deltat);
         order_count += 1;
       }
+      current = current->next;
+    }
+    if (order_count == 0)
+      break;
+  }
+  return (err);
+}
+
+/* -------------------------------------------------------------
+   channel_mp_route_network
+   ------------------------------------------------------------- */
+int channel_mp_route_network(Channel *net, int deltat)
+{
+  int order;
+  int order_count;
+  int err = 0;
+  Channel *current;
+
+  channel_mp_diffuse(net, deltat);
+
+  for (order = 1;; order += 1) {
+    order_count = 0;
+    current = net;
+    while (current != NULL) {
+      if (current->order == order) {
+		  err += 
+			 channel_mp_route_segment(current, deltat);
+		  order_count += 1;
+	  }
       current = current->next;
     }
     if (order_count == 0)
@@ -580,6 +749,27 @@ int channel_step_initialize_network(Channel *net)
     //net->Ncells = 0; /* not used for now */
 
     channel_step_initialize_network(net->next);
+  }
+  return (0);
+}
+
+/*****************************************************************************
+  channel_step_initialize_wqothers_network
+  
+  Usage: Assign initial quality to urban pollutants of the unique channel ID.
+*****************************************************************************/
+int channel_step_initialize_mp_network(Channel *net)
+{
+  if (net != NULL)
+  {
+    net->mpLatIn = 0.;
+    net->mpOutMass = 0.;
+	  net->mpInMass = 0.;
+	  net->mplast_StoredMass = net->mpStoredMass;
+	  net->mpNewQual = 0.;	    
+	  net->mpDiffMass = 0.;
+
+	  channel_step_initialize_mp_network(net->next); 
   }
   return (0);
 }
@@ -681,6 +871,64 @@ int
   }
   fprintf(out2, "\n");
 
+  return (err);
+}
+
+/* -------------------------------------------------------------------------
+   ChannelSaveMPLoading()
+   Saves the channel pollutant outflow using a text string as the time field
+   ------------------------------------------------------------------------- */
+
+int ChannelSaveMPLoading(char *tstring, Channel *net, FILE *out2, 
+			  FILE *out3, int flag)
+{
+  int err = 0;
+  //int p;
+
+  if (flag == 1) {
+    fprintf(out2, "DATE               ");
+	fprintf(out3, "DATE               ");
+    for (; net != NULL; net = net->next) {
+      if (net->record) {
+	    fprintf(out2, "%12s_load(kg)", net->record_name);
+		fprintf(out3, "%12s_conc.(kg/m3)", net->record_name);
+	  }
+	}
+    fprintf(out2, "\n");
+	fprintf(out3, "\n");
+  }
+
+  //tsstring = date in the form of 01.01.1915-00:00:00 
+  if (fprintf(out2, "%19s  ", tstring) == EOF) {
+    error_handler(ERRHDL_ERROR,
+		  "ChannelSaveMPLoading: write error:%s", strerror(errno));
+    err++;
+  }
+  if (fprintf(out3, "%19s  ", tstring) == EOF) {
+    error_handler(ERRHDL_ERROR,
+		  "ChannelSaveMPLoading: write error:%s", strerror(errno));
+    err++;
+  }
+  for (; net != NULL; net = net->next) {
+	  /* initialize the local variables */
+	  if (net->record) {
+		if (net->mpOutMass< MIN_REPORT_QUAL)
+		  net->mpOutMass= 0;
+		if (net->mpNewQual< MIN_REPORT_QUAL)
+		  net->mpNewQual = 0;
+		if (fprintf(out2, "%f  ", net->mpOutMass) == EOF) {
+	      error_handler(ERRHDL_ERROR, "ChannelSaveMPLoading: write error:%s", strerror(errno));
+		  err++;
+		}
+		if (fprintf(out3, "%f  ", net->mpNewQual) == EOF) {
+		  error_handler(ERRHDL_ERROR, "ChannelSaveMPLoading: write error:%s", strerror(errno));
+		  err++;
+		}
+	  }
+	
+  }
+  fprintf(out2, "\n");
+  fprintf(out3, "\n");
   return (err);
 }
 

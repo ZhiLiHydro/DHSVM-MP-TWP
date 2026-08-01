@@ -55,6 +55,8 @@
 #define WATER_DENSITY 1000.		/* Density of water in kg/m3 */
 #define Z0_MULTIPLIER 0.13		/* Multiplier for vegetation height to get roughness length (m) */
 #define MinDiff   (1.e-8)
+#define MIN_RUNOFF   2.54e-5    /* Definition of measureable runoff rate (m/hr) */
+#define MIN_REPORT_QUAL 3e-4
 
 /**************** extern constants - see globals.c ****************/
 
@@ -98,4 +100,20 @@ extern int TotNumGap;                  /* total number of grid cells with a gap 
 
 extern float SNOWSLIDE1;               /* First Parameter in Snowslide equation */
 extern float SNOWSLIDE2;               /* Second Parameter in Snowslide equation */
+
+extern float DryDays;               /* Number of antecedent dry days before the model start date */
+extern float ATMS_LOW;              /* Lower boundary of runoff to wash off ATMS MP */
+extern float ATMS_UP;               /* Upper boundary of runoff to wash off ATMS MP */
+extern float TWP_LOW;               /* Lower boundary of runoff to wash off TWP */
+extern float TWP_UP;                /* Upper boundary of runoff to wash off TWP */
+extern int TWP_ON;
+extern float TWP_SCALE;
+extern float TWP_D50;
+extern float TWP_DENSITY;
+extern float TWP_VISCOSITY;
+extern float TWP_KAPPA;
+extern float TWP_REF_RATIO;
+extern float TWP_DIFFUSIVITY;
+extern float TWP_BED_INIT;
+
 #endif

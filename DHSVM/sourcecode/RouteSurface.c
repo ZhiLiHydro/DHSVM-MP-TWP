@@ -44,7 +44,8 @@ the Saint-Venant equations.
 void RouteSurface(MAPSIZE * Map, TIMESTRUCT * Time, TOPOPIX ** TopoMap,
   SOILPIX ** SoilMap, OPTIONSTRUCT *Options,
   UNITHYDR ** UnitHydrograph, UNITHYDRINFO * HydrographInfo, float *Hydrograph,
-  DUMPSTRUCT *Dump, VEGPIX ** VegMap, VEGTABLE * VType, CHANNEL *ChannelData)
+  DUMPSTRUCT *Dump, VEGPIX ** VegMap, VEGTABLE * VType, CHANNEL *ChannelData, 
+  MPPIX ** MPMap)
 {
   const char *Routine = "RouteSurface";
   int Lag;			/* Lag time for hydrograph */
@@ -67,10 +68,14 @@ void RouteSurface(MAPSIZE * Map, TIMESTRUCT * Time, TOPOPIX ** TopoMap,
         }
       }
     }
+
+    //printf("works at 72 \n");
+    //fflush(stdout); 
     for (y = 0; y < Map->NY; y++) {
       for (x = 0; x < Map->NX; x++) {
-        if (INBASIN(TopoMap[y][x].Mask)) {
+        if (INBASIN(TopoMap[y][x].Mask)) {          
           if (!channel_grid_has_channel(ChannelData->stream_map, x, y)) {
+            //printf("works at 78 \n");
             if (VType[VegMap[y][x].Veg - 1].ImpervFrac > 0.0) {
               /* Calculate the outflow from impervious portion of urban cell straight to nearest channel cell */
               SoilMap[TopoMap[y][x].drains_y][TopoMap[y][x].drains_x].IExcess +=
@@ -95,6 +100,28 @@ void RouteSurface(MAPSIZE * Map, TIMESTRUCT * Time, TOPOPIX ** TopoMap,
                     *((float)TopoMap[y][x].Dir[n] / (float)TopoMap[y][x].TotalDir);
                 }
               }
+
+              //printf("works at 100 \n");
+              fflush(stdout); 
+
+              /*Repeat same process for MP*/
+              if (Options->Plastics) {
+                MPMap[TopoMap[y][x].drains_y][TopoMap[y][x].drains_x].Uatm_mp += MPMap[y][x].Uatm_wash;
+                
+                //printf("local x = %d, y = %d, uwash is  %.7f ,\n", x, y, MPMap[y][x].Uatm_wash);
+                //printf("move to x = %d, y = %d, uwash is  %.7f ,\n", TopoMap[y][x].drains_x, TopoMap[y][x].drains_y, MPMap[TopoMap[y][x].drains_y][TopoMap[y][x].drains_x].Uatm_mp);
+
+                for (n = 0; n < NDIRS; n++) {
+                  int xn = x + xdirection[n];
+                  int yn = y + ydirection[n];
+                  if (valid_cell(Map, xn, yn)) {
+                    MPMap[yn][xn].atm_mp += MPMap[y][x].atm_wash *((float)TopoMap[y][x].Dir[n] / (float)TopoMap[y][x].TotalDir);
+                  }
+               }
+               /* reset wash to 0 after distribution */
+               MPMap[y][x].Uatm_wash = 0.0;
+               MPMap[y][x].atm_wash = 0.0;               
+              }
             }
             else {
               for (n = 0; n < NDIRS; n++) {
@@ -102,13 +129,19 @@ void RouteSurface(MAPSIZE * Map, TIMESTRUCT * Time, TOPOPIX ** TopoMap,
                 int yn = y + ydirection[n];
                 if (valid_cell(Map, xn, yn)) {
                   SoilMap[yn][xn].IExcess += SoilMap[y][x].Runoff *((float)TopoMap[y][x].Dir[n] / (float)TopoMap[y][x].TotalDir);
+                  if (Options->Plastics) {
+                    MPMap[yn][xn].atm_mp += MPMap[y][x].atm_wash *((float)TopoMap[y][x].Dir[n] / (float)TopoMap[y][x].TotalDir);
+                  }            
                 }
               }
+              if (Options->Plastics)
+                MPMap[y][x].atm_wash = 0.0;
             }
           }
           else if (channel_grid_has_channel(ChannelData->stream_map, x, y)) {
             SoilMap[y][x].IExcess += SoilMap[y][x].Runoff;
           }
+
         }
       }
     }
@@ -153,4 +186,3 @@ void RouteSurface(MAPSIZE * Map, TIMESTRUCT * Time, TOPOPIX ** TopoMap,
     fprintf(Dump->Stream.FilePtr, " %g\n", StreamFlow);
   }
 }
-

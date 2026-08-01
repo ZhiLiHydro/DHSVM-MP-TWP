@@ -76,6 +76,7 @@ set(DHSVM_SRC
   CalcEffectiveKh.c
   CalcKhDry.c
   CalcKinViscosity.c
+  CalcMPBuildupWashoff.c
   CalcSatDensity.c
   CalcSnowAlbedo.c
   CalcSolar.c
@@ -109,6 +110,7 @@ set(DHSVM_SRC
   InitNetwork.c
   InitNewMonth.c
   InitParameterMaps.c
+  InitPlasticMap.c
   InitSnowMap.c
   InitTables.c
   InitTerrainMaps.c

@@ -559,6 +559,24 @@ double channel_grid_outflow(ChannelMapPtr ** map, int col, int row)
   return mass;
 }
 
+/* -------------------------------------------------------------------
+   channel_grid_mp_inflow
+   If the channel(s) within the cell are marked as ``sinks'', this
+   function totals the mass from the channels(s) and returns the total
+   mass.
+   ------------------------------------------------------------------- */
+void channel_grid_mp_inflow(ChannelMapPtr **map, int col,  
+							  int row, float mass)
+{
+  ChannelMapPtr cell = map[col][row];
+  float len = channel_grid_cell_length(map, col, row);
+
+  while (cell != NULL) {
+	  cell->channel->mpLatIn += mass*cell->length/len;
+	  cell = cell->next; 
+  }
+}
+
 /* -------------------------------------------------------------
    channel_grid_flowlength
    returns the flowlength along a road surface in a channel

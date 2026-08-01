@@ -42,6 +42,14 @@ typedef struct {
   FILE *streamWND;
   FILE *streamATP;
   FILE *streamMelt;
+  /*Output file for WQ */
+  FILE *MP_air_loadout;
+  FILE *MP_air_concout;
+//   FILE *MP_twp_loadout;
+//   FILE *MP_twp_concout;
+//   FILE *MP_wwtp_loadout;
+//   FILE *MP_wwtp_concout;
+
 } CHANNEL;
 
 /* -------------------------------------------------------------
@@ -55,7 +63,10 @@ void RouteChannel(CHANNEL *ChannelData, TIMESTRUCT *Time, MAPSIZE *Map,
 		  TOPOPIX **TopoMap, SOILPIX **SoilMap, AGGREGATED *Total, 
 		  OPTIONSTRUCT *Options, ROADSTRUCT **Network, SOILTABLE *SType, 
 		  PRECIPPIX **PrecipMap, float Tair, float Rh, SNOWPIX **SnowMap);
+void RouteMPChannel(CHANNEL *ChannelData, TIMESTRUCT *Time, MAPSIZE *Map,
+	    TOPOPIX **TopoMap, SOILPIX **SoilMap, AGGREGATED *Total,  MPPIX ** MPMap);
 void ChannelCut(int y, int x, CHANNEL *ChannelData, ROADSTRUCT *Network);
 uchar ChannelFraction(TOPOPIX *topo, ChannelMapRec *rds);
+void InitChannelMPDump(CHANNEL *channel, char *DumpPath);
 
 #endif

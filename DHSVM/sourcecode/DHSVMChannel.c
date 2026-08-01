@@ -105,7 +105,7 @@ InitChannel(LISTPTR Input, MAPSIZE *Map, int deltat, CHANNEL *channel,
     printf("\tReading Road data\n");
 
     if ((channel->road_class =
-	 channel_read_classes(StrEnv[road_class].VarStr, road_class) == NULL)) {
+	 channel_read_classes(StrEnv[road_class].VarStr, road_class)) == NULL) {
       ReportError(StrEnv[road_class].VarStr, 5);
     }
     if ((channel->roads =
@@ -170,6 +170,23 @@ void InitChannelDump(OPTIONSTRUCT *Options, CHANNEL * channel,
     OpenFile(&(channel->roadout), buffer, "w", TRUE);
     sprintf(buffer, "%sRoadflow.Only", DumpPath);
     OpenFile(&(channel->roadflowout), buffer, "w", TRUE);
+
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   InitChannelMpDump
+   ------------------------------------------------------------------------ */
+void InitChannelMPDump(CHANNEL *channel, char *DumpPath)
+{
+  char buffer[NAMESIZE];
+
+  if (channel->streams != NULL) {
+	/* airborne microplastics */
+    sprintf(buffer, "%sTWP.Load.Only", DumpPath);
+	OpenFile(&(channel->MP_air_loadout), buffer, "w", TRUE);
+	sprintf(buffer, "%sTWP.Conc.Only", DumpPath);
+	OpenFile(&(channel->MP_air_concout), buffer, "w", TRUE);
 
   }
 }
@@ -322,3 +339,56 @@ uchar ChannelFraction(TOPOPIX * topo, ChannelMapRec * rds)
 
   return (uchar) fract;
 }
+
+/************************************************************************************
+  Function name: RouteMPChannel()
+
+  Purpose      : Route nutrients through the channel based on channel stream network 
+                 and map files.
+  Required     :
+
+  Returns      : 
+*************************************************************************************/
+void RouteMPChannel(CHANNEL *ChannelData, TIMESTRUCT *Time, MAPSIZE *Map,
+	    TOPOPIX **TopoMap, SOILPIX **SoilMap, AGGREGATED *Total,  MPPIX ** MPMap)
+{
+  int x, y;
+  int p;
+  int flag;
+  char buffer[32];
+  float total_inMass = 0.0;
+
+  SPrintDate(&(Time->Current), buffer);
+  flag = IsEqualTime(&(Time->Current), &(Time->Start));
+
+  for (y = 0; y < Map->NY; y++) {
+    for (x = 0; x < Map->NX; x++) {
+      if (INBASIN(TopoMap[y][x].Mask)) {  
+		if (channel_grid_has_channel(ChannelData->stream_map, x, y)) {
+		 // for (p = 1; p < NPolluts; p++) {
+      //total_inMass = MPMap[y][x].Uatm_wash + MPMap[y][x].atm_wash;
+      total_inMass = MPMap[y][x].Uatm_wash + MPMap[y][x].atm_wash;
+
+		  channel_grid_mp_inflow(ChannelData->stream_map, x, y, total_inMass);
+      MPMap[y][x].ChannelMPInt += total_inMass;
+			/*massbal_updateLoadingTotals(RUNOFF_LOAD, MPMap[y][x].Uatm_wash + MPMap[y][x].atm_wash, 
+				&(Total->LoadingTotals[p]));*/
+			MPMap[y][x].Uatm_wash = 0.0f;
+      MPMap[y][x].atm_wash = 0.0f;
+		 // }
+       
+		}
+	  }
+    }
+  }
+
+  /* route stream channels */
+  if (ChannelData->streams != NULL) {
+	channel_mp_route_network(ChannelData->streams, Time->Dt);
+	  /*massbal_updateLoadingTotals
+	    (RUNOFF_LOAD, -Total->LoadingTotals[p].decay, &(Total->LoadingTotals[p]));  */ 
+	ChannelSaveMPLoading(buffer, ChannelData->streams,
+			ChannelData->MP_air_loadout, ChannelData->MP_air_concout, flag);
+  }
+}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  

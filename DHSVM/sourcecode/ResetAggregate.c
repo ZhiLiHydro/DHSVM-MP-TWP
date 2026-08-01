@@ -122,6 +122,10 @@ void ResetAggregate(LAYER * Soil, LAYER * Veg, AGGREGATED * Total,
   Total->Saturated = 0;
   Total->CulvertReturnFlow = 0;
   Total->CulvertToChannel = 0;
+  Total->MP.AtmsMP = 0;
+  Total->MP.atm_mp = 0;
+  Total->MP.Uatm_mp = 0;
+  Total->MP.ChannelMPInt = 0;
 
   if (Options->CanopyGapping && TotNumGap > 0) {
 	for (i = 0; i < CELL_PARTITION; i++) {

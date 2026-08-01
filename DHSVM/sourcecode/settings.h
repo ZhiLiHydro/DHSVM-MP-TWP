@@ -120,7 +120,7 @@ enum KEYS {
   temp_lapse, precip_lapse, cressman_radius, cressman_stations, prism_data_path, 
   prism_data_ext, shading_data_path, shading_data_ext, skyview_data_path, 
   stream_temp, canopy_shading, improv_radiation, gapping, snowslide, sepr, 
-  snowstats, routing_neighbors, 
+  snowstats, routing_neighbors, plastics,
   /* Area */
   coordinate_system, extreme_north, extreme_west, center_latitude,
   center_longitude, time_zone_meridian, number_of_rows,
@@ -143,6 +143,10 @@ enum KEYS {
   alb_acc_min,
   alb_melt_min,
   multiplier,
+  /* Plastic inputs section */
+  atmsmp_file = 0, twp_file, dry_days, atms_low, atms_up, twp_low, twp_up,
+  twp_scale_file, twp_emission, twp_coefficient, twp_d50, twp_density,
+  twp_viscosity, twp_kappa, twp_ref_ratio, twp_diffusivity, twp_bed_init,
   /* Station information */
   station_name = 0, station_north, station_east, station_elev, station_file,
   /* RADAR information */
