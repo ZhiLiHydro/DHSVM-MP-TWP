@@ -5,12 +5,9 @@ Vegetation Model (DHSVM) with a microplastics module focused on
 tire wear particles (TWP). The hydrologic model remains DHSVM; setting
 `PLASTICS = FALSE` disables the added particle calculations.
 
-DHSVM represents the effects of weather, topography, soils, and vegetation on
-watershed hydrology at high spatial resolution. The upstream model and general
-documentation are available from the [DHSVM website](https://www.pnnl.gov/projects/distributed-hydrology-soil-vegetation-model).
-The foundational model is described by Wigmosta et al. (1994),
-*Water Resources Research*, DOI
-[10.1029/94WR00436](https://doi.org/10.1029/94WR00436).
+## Publications
+
+Li, Z., Huang, Y., Sun, N., Duan, Z., Wigmosta, M., Yang, Z., & Maurer, B. (2026). Traffic-informed prioritization of tire and road wear particle monitoring and mitigation in the Delaware River Basin and Philadelphia metropolitan region. Submitted to Journal of Environmental Management.
 
 
 ## TWP additions
@@ -33,28 +30,6 @@ The TWP module adds:
 This repository intentionally contains only the core model source. It excludes the test datasets,
 RBM model, auxiliary conversion programs, legacy GIS scripts, historical
 tutorials, and generated build products. 
-
-## Build
-
-Requirements depend on the selected options. A C compiler and CMake are
-required. NetCDF and X11 are enabled by default but may be disabled.
-
-```bash
-cmake -S . -B build \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DDHSVM_USE_NETCDF=OFF \
-  -DDHSVM_USE_X11=OFF
-cmake --build build --parallel
-```
-
-The main executable is normally written to:
-
-```text
-build/DHSVM/sourcecode/DHSVM
-```
-
-For a NetCDF-enabled build, install the NetCDF C development library and omit
-`-DDHSVM_USE_NETCDF=OFF`. X11 can be enabled in the same way.
 
 ## Activating the particle module
 
