@@ -7,7 +7,7 @@ tire wear particles (TWP). The hydrologic model remains DHSVM; setting
 
 DHSVM represents the effects of weather, topography, soils, and vegetation on
 watershed hydrology at high spatial resolution. The upstream model and general
-documentation are available from the [DHSVM website](https://dhsvm.pnnl.gov/).
+documentation are available from the [DHSVM website](https://www.pnnl.gov/projects/distributed-hydrology-soil-vegetation-model).
 The foundational model is described by Wigmosta et al. (1994),
 *Water Resources Research*, DOI
 [10.1029/94WR00436](https://doi.org/10.1029/94WR00436).
